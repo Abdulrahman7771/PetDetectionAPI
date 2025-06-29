@@ -1,0 +1,9 @@
+Flask==3.1.1
+numpy==2.3.1
+opencv-python==4.11.0.86
+pillow==11.2.1
+torch==2.7.1
+torchvision==0.22.1
+ultralytics==8.3.160
+requests
+base64
