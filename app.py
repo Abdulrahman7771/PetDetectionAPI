@@ -25,6 +25,13 @@ def analyze():
     # 2️⃣ Detection and segmentation (loaded one‑by‑one inside helpers)
     boxes = detect(img)
     mask = segment(img)
+    result = {
+        "found": True,
+        "boxes": boxes,
+        "mask": mask
+    }
+
+    print("Returning:", result)
 
     return jsonify({"found": True, "boxes": boxes, "mask": mask})
 

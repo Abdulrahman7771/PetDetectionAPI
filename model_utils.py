@@ -58,42 +58,35 @@ def classify(img: Image.Image) -> bool:
 # ────────────────────────────────────────────────────────────────────────────────
 # 2. Detection  ‑ returns a list of [x1, y1, x2, y2] boxes for cats & dogs only
 # ────────────────────────────────────────────────────────────────────────────────
-def detect(img: Image.Image):
-    # YOLOv5s is ~14 MB weights; still fits when loaded alone
-    yolo = YOLO("yolov5su.pt")
-    results = yolo.predict(img, conf=0.5)[0]
-
+def detect(image: Image.Image):
+    yolo_model = YOLO("yolov5su.pt")
+    results = yolo_model.predict(image, conf=0.5)[0]
     boxes = []
     for box in results.boxes:
-        cls_id = int(box.cls[0].item())
-        label = yolo.model.names[cls_id].lower()
-        if label in ("cat", "dog"):
-            x1, y1, x2, y2 = map(float, box.xyxy[0])
-            boxes.append([x1, y1, x2, y2])
-
-    # 🔸 Free memory
-    del yolo, results
-    torch.cuda.empty_cache()
-
-    return boxes
+        cls = int(box.cls[0].item())
+        label = yolo_model.model.names[cls]
+        if label.lower() in ["cat", "dog"]:
+            coords = box.xyxy[0].cpu().numpy().tolist()
+            coords = [float(c) for c in coords]  # force float conversion
+            boxes.append(coords)
+    return boxes  # List[List[float]]
 
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 3. Segmentation  ‑ returns binary mask (0=background, 1=pet pixels)
-# ────────────────────────────────────────────────────────────────────────────────
-def segment(img: Image.Image):
+# ────────────────────────────────────────────────────────────────────────────────\
+
+def segment(image: Image.Image):
     seg_model = segmentation.deeplabv3_resnet50(weights="DEFAULT")
     seg_model.eval()
-
-    input_tensor = T.ToTensor()(img).unsqueeze(0)
+    input_tensor = T.ToTensor()(image).unsqueeze(0)
     with torch.no_grad():
-        out = seg_model(input_tensor)["out"]
+        output = seg_model(input_tensor)["out"]
+    seg_mask = torch.argmax(output.squeeze(), dim=0).cpu().numpy()
 
-    seg_mask = torch.argmax(out.squeeze(), 0).cpu().numpy()
-    pet_mask = ((seg_mask == 8) | (seg_mask == 12)).astype(np.uint8)  # 8=cat, 12=dog
+    # Keep only dog/cat (VOC classes 8 and 12)
+    pet_mask = np.where((seg_mask == 8) | (seg_mask == 12), 1, 0).astype(int)
 
-    # 🔸 Free memory
-    del seg_model, out, seg_mask
-    torch.cuda.empty_cache()
-
+    # Ensure it's a list of lists of ints
     return pet_mask.tolist()
+
