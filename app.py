@@ -30,5 +30,4 @@ def analyze():
 
 
 if __name__ == "__main__":
-    # For local testing; Render uses the startup command you supply
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(debug=True)
